@@ -3,5 +3,6 @@
 
 int main () {
     printf("SINA VISUAL NEURAL NETWORK\n");
+
     return 0;
 }
