@@ -16,10 +16,10 @@ typedef struct {
 // 2. Estructura de una Capa (conjunto de neuronas)
 typedef struct {
     int num_neuronas;
-    Neurona *neuronas; // Arreglo de estructuras tipo Neurona
+    Neurona **neuronas; // Arreglo de estructuras tipo Neurona
 } Capa;
 
-// 3. Estructura Maestra de la Red Neuronal (SINA)
+// 3. Estructura de la Red Neuronal (SINA)
 typedef struct {
     int num_capas;
     Capa *capas;
