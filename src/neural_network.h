@@ -32,5 +32,6 @@ void liberar_memoria(RedNeuronal *red);
 
 void forward_propagation(RedNeuronal *red, double *entradas_iniciales);
 void liberar_red(RedNeuronal *red);
+void backpropagation(RedNeuronal *red, double *entradas_iniciales, double *targets);
 
 #endif

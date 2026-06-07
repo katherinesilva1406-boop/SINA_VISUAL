@@ -116,7 +116,7 @@ void liberar_red(RedNeuronal *red) {
 // Funcion de Activacion SIGMOIDE y Forward Propagation - vision de la carretera
 
 // Función matemática de filtrado
-double sigmoide(double z) {
+static double sigmoide(double z) {
     return 1.0 / (1.0 + exp(-z));
 }
 
@@ -155,3 +155,74 @@ void forward_propagation(RedNeuronal *red, double *entradas_iniciales) {
         }
     }
 }
+
+    // Funcion auxiliar para la derivada de sigmoide, calculo de deltas
+    static double derivada_sigmoide(double salida_activada) {
+    return salida_activada * (1.0 - salida_activada);
+    }
+
+    // Funcion de Backpropagation (PDF)
+
+    void backpropagation(RedNeuronal *red, double *entradas_iniciales, double *targets) {
+        int L = red->num_capas - 1; // Índice de la última capa (capa de salida)
+
+        // 1. Calcular los deltas para la capa de salida
+        Capa *capa_salida = &red->capas[L];
+        for (int j = 0; j < capa_salida->num_neuronas; j++) {
+            Neurona *n = capa_salida->neuronas[j];
+            
+            // error = lo que debio hacer (target) - lo que hizo (salida)
+            double error = targets[j] - n->salida;
+            
+            // delta guarda direccion y magnitud del ajuste necesario
+            n->delta = error * derivada_sigmoide(n->salida);
+
+        }
+
+        // 2. Calcular los deltas para las capas ocultas (de atrás hacia adelante)    
+        for (int i = L - 1; i >= 0; i--) {
+            Capa *capa_actual = &red->capas[i];
+            Capa *capa_siguiente = &red->capas[i + 1];
+
+            for (int j = 0; j < capa_actual->num_neuronas; j++) {
+                Neurona *n = capa_actual->neuronas[j];
+                double suma_errores = 0.0;
+
+         // Analisis de ls influencia de la neurona actual en los deltas de la capa siguiente   
+                for (int k = 0; k < capa_siguiente->num_neuronas; k++) {
+                    Neurona *n_siguiente = capa_siguiente->neuronas[k];
+                    suma_errores += n_siguiente->delta * n_siguiente->pesos[j];
+                }
+
+                // Delta de una neurona oculta = 
+                // SUMA( delta de cada neurona de la capa siguiente * peso que conecta esta neurona con esa neurona de la capa siguiente )
+                n->delta = suma_errores * derivada_sigmoide(n->salida);
+        }
+
+        
+    }
+    // PASO 3: ¡El gran ajuste! Corregir Pesos y Biases en toda la red
+    for (int i = 0; i < red->num_capas; i++) {
+        Capa *capa_actual = &red->capas[i];
+
+        for (int j = 0; j < capa_actual->num_neuronas; j++) {
+            Neurona *n = capa_actual->neuronas[j];
+
+            // Ajustamos cada uno de los pesos de la neurona
+            for (int k = 0; k < n->num_entradas; k++) {
+                // Si es la capa 0, su entrada fue la carretera (matriz 5x5)
+                // Si es una capa superior, su entrada fue la salida de la capa anterior
+                double valor_entrada = (i == 0) ? entradas_iniciales[k] : red->capas[i - 1].neuronas[k]->salida;
+                
+                // Fórmula matemática oficial: W_nuevo = W_viejo + (Tasa * Delta * Entrada)
+                n->pesos[k] += red->tasa_aprendizaje * n->delta * valor_entrada;
+            }
+            
+            // Ajustamos el sesgo (Bias) de la neurona
+            n->bias += red->tasa_aprendizaje * n->delta;
+        }
+    }
+}
+
+
+    
