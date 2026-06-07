@@ -1,76 +1,90 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "neural_network.h" // Asegúrate de que coincida con el nombre de tu archivo .h
+#include <time.h>
+#include <math.h>
+#include "neural_network.h"
 
 int main() {
-    printf("==================================================\n");
-    printf("   PROBANDO EL NUCLEO DE LA IA (SINA-VISUAL)    \n");
-    printf("==================================================\n\n");
+    // 1. Inicializar la semilla aleatoria para que los pesos cambien en cada ejecución
+    srand(time(NULL));
 
-    // -------------------------------------------------------------------------
-    // PASO 1: Configurar e inicializar la arquitectura de la red
-    // -------------------------------------------------------------------------
-    // Definimos 2 capas entrenables (por ejemplo: 1 capa oculta y 1 capa de salida)
-    int num_capas = 2; 
-    
-    // Configuración: la capa oculta tendrá 8 neuronas y la capa de salida tendrá 2 neuronas.
-    // Recuerda que tu inicializador ya sabe automáticamente que la capa 0 recibirá 25 entradas
-    // gracias a la lógica que revisamos antes.
-    int neuronas_por_capa[] = {8, 2}; 
-    double tasa_aprendizaje = 0.1;
+    // 2. Configurar la arquitectura de la red
+    // Capa 0 (Oculta): 4 neuronas (reciben las 25 entradas de la matriz 5x5)
+    // Capa 1 (Salida): 2 neuronas (Dirección y Velocidad)
+    int neuronas_por_capa[] = {4, 2}; 
+    int num_capas = 2;
+    double tasa_aprendizaje = 0.3; // Qué tan rápido ajusta los pesos
 
-    printf("[PASO 1] Inicializando la red neuronal...\n");
-    RedNeuronal *red = inicializar_red(num_capas, neuronas_por_capa, tasa_aprendizaje);
-    
-    if (red == NULL) {
-        printf(" X ERROR: No se pudo asignar memoria para la red neuronal.\n");
+    RedNeuronal *mi_red = inicializar_red(num_capas, neuronas_por_capa, tasa_aprendizaje);
+    if (mi_red == NULL) {
+        printf("Error al inicializar la red.\n");
         return 1;
     }
-    printf(" ~ ¡Red inicializada correctamente en memoria!\n\n");
 
-    // -------------------------------------------------------------------------
-    // PASO 2: Crear datos de entrada simulados (Matriz 5x5 aplanada = 25 valores)
-    // -------------------------------------------------------------------------
-    // Simulemos una matriz de 5x5 donde el "1.0" representa el camino libre 
-    // y el "0.0" representa los obstáculos de la carretera.
-    double entradas_prueba[25] = {
-        0.0, 0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0, 0.0,
-        0.0, 1.0, 1.0, 1.0, 0.0,
-        0.0, 1.0, 1.0, 1.0, 0.0,
-        0.0, 0.0, 1.0, 0.0, 0.0
+    // 3. Crear una simulación de carretera de prueba (Matriz 5x5 "aplanada" a 25 elementos)
+    // Ejemplo: Un obstáculo (1) detectado en la esquina superior derecha
+    double carretera_test[25] = {
+        0, 0, 0, 1, 1,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0
     };
 
-    printf("[PASO 2] Ejecutando Forward Propagation (Paso hacia adelante)...\n");
-    // Esto calculará los valores netos y les aplicará la función Sigmoide capa por capa
-    forward_propagation(red, entradas_prueba);
-    printf("¡Forward propagation ejecutado sin romperse!\n\n");
+    // 4. Definir las respuestas correctas ideales (Targets) para esa situación
+    // Target 0 (Dirección): 0.1 -> Girar fuerte a la izquierda (para esquivar el obstáculo de la derecha)
+    // Target 1 (Velocidad): 0.8 -> Mantener una velocidad alta pero prudente
+    double respuestas_correctas[2] = {0.1, 0.8};
 
-    // -------------------------------------------------------------------------
-    // PASO 3: Verificar que las salidas tengan sentido
-    // -------------------------------------------------------------------------
-    printf("[PASO 3] Verificando rango de las neuronas de salida...\n");
+    printf("=== PRUEBA DEL MOTOR DE APRENDIZAJE (BACKPROPAGATION) ===\n\n");
+
+    // 5. EVALUACIÓN INICIAL: Ver qué responde la red antes de entrenar (A ciegas)
+    forward_propagation(mi_red, carretera_test);
     
-    // El índice de la última capa (la capa de salida)
-    int idx_salida = red->num_capas - 1; 
+    // Índice de la capa de salida (última capa)
+    int capa_salida_idx = mi_red->num_capas - 1; 
     
-    for (int i = 0; i < red->capas[idx_salida].num_neuronas; i++) {
-        // Usamos ->salida porque en tu código cada neurona es un puntero (Neurona*)
-        printf("   -> Salida calculada por la neurona de salida %d: %f\n", i, red->capas[idx_salida].neuronas[i]->salida);
+    printf("--- ANTES DEL ENTRENAMIENTO (Predicciones aleatorias) ---\n");
+    printf("Neurona Salida 0 (DIRECCION): %f  |  Target Ideal: %f\n", 
+           mi_red->capas[capa_salida_idx].neuronas[0]->salida, respuestas_correctas[0]);
+    printf("Neurona Salida 1 (VELOCIDAD): %f  |  Target Ideal: %f\n\n", 
+           mi_red->capas[capa_salida_idx].neuronas[1]->salida, respuestas_correctas[1]);
+
+
+    // 6. BUCLE DE ENTRENAMIENTO (Épocas)
+    // Le mostraremos el mismo escenario 2000 veces seguidas para ver si aprende
+    int epocas = 2000;
+    printf("Entrenando la red por %d epocas...\n", epocas);
+    
+    for (int i = 0; i < epocas; i++) {
+        // Ejecución hacia adelante (Calcular salidas actuales)
+        forward_propagation(mi_red, carretera_test);
+        
+        // Ejecución hacia atrás (Calcular errores y corregir pesos)
+        backpropagation(mi_red, carretera_test, respuestas_correctas);
+
+        // Cada 400 épocas calculamos el error absoluto global para ver el progreso
+        if (i % 400 == 0) {
+            double error0 = fabs(respuestas_correctas[0] - mi_red->capas[capa_salida_idx].neuronas[0]->salida);
+            double error1 = fabs(respuestas_correctas[1] - mi_red->capas[capa_salida_idx].neuronas[1]->salida);
+            double error_promedio = (error0 + error1) / 2.0;
+            printf("  > Epoca %4d | Error Promedio Actual: %f\n", i, error_promedio);
+        }
     }
-    printf("   (Nota: Al usar la Sigmoide, estos valores DEBEN estar entre 0.0 y 1.0)\n\n");
-    printf("   (Si tus estructuras lo permiten, imprime los valores para validar que esten entre 0 y 1)\n\n");
 
-    // -------------------------------------------------------------------------
-    // PASO 4: Liberar la memoria de la red
-    // -------------------------------------------------------------------------
-    printf("[PASO 4] Liberando la memoria dinamica para evitar fugas (Leaks)...\n");
-    liberar_red(red);
-    printf(" ¡Memoria limpiada con exito!\n\n");
 
-    printf("==================================================\n");
-    printf("      ¡PRUEBA INICIAL COMPLETADA CON EXITO!       \n");
-    printf("==================================================\n");
+    // 7. EVALUACIÓN FINAL: Ver si la red memorizó y corrigió su comportamiento
+    forward_propagation(mi_red, carretera_test);
+
+    printf("\n--- DESPUES DEL ENTRENAMIENTO (Red entrenada) ---\n");
+    printf("Neurona Salida 0 (DIRECCION): %f  |  Target Ideal: %f\n", 
+           mi_red->capas[capa_salida_idx].neuronas[0]->salida, respuestas_correctas[0]);
+    printf("Neurona Salida 1 (VELOCIDAD): %f  |  Target Ideal: %f\n\n", 
+           mi_red->capas[capa_salida_idx].neuronas[1]->salida, respuestas_correctas[1]);
+
+    // 8. Liberar la memoria para evitar memory leaks
+    liberar_red(mi_red);
+    printf("Memoria de la red liberada exitosamente.\n");
 
     return 0;
 }
