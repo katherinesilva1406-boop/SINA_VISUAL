@@ -30,4 +30,7 @@ typedef struct {
 RedNeuronal* inicializar_red(int num_capas, int *neuronas_por_capa, double tasa);
 void liberar_memoria(RedNeuronal *red);
 
+void forward_propagation(RedNeuronal *red, double *entradas_iniciales);
+void liberar_red(RedNeuronal *red);
+
 #endif
