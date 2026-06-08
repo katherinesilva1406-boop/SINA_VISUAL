@@ -3,8 +3,11 @@
 #include <time.h>
 #include <math.h>
 #include "neural_network.h"
+#include "src/interface.h"
+#include "src/dataset.h"
 
 int main() {
+
     // 1. Inicializar la semilla aleatoria para que los pesos cambien en cada ejecución
     srand(time(NULL));
 
@@ -19,7 +22,7 @@ int main() {
     if (mi_red == NULL) {
         printf("Error al inicializar la red.\n");
         return 1;
-    }
+    }   
 
     // 3. Crear una simulación de carretera de prueba (Matriz 5x5 "aplanada" a 25 elementos)
     // Ejemplo: Un obstáculo (1) detectado en la esquina superior derecha

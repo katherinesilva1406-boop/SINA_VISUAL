@@ -3,13 +3,15 @@
 #define DATASET_H
 
 typedef struct {
-    int filas;          // Cantidad de momentos grabados
-    int entradas;       // Serán 25 (matriz 5x5) + clima (ej. 2 sensores) = 27
-    int salidas;        // 3 (Izquierda, Centro, Derecha)
-    double **datos;
+    int filas;              // Total de escenarios en el archivo csv
+    int entradas;           // Radar de 25 (MAtriz 5x5)
+    int salidas;            // 2 (Direccion y Velocidad)
+    double **datos;         // Matriz dinamica que guarda todo
+
 } Dataset;
 
-Dataset* leer_archivo_csv (char * nombre_archivo, int e, int s);
 Dataset* crear_dataset (int f, int e, int s);
+Dataset* leer_archivo_csv (char *Neurona, int e, int s);
+void liberar_dataset (Dataset *ds);
 
-#endif 
+#endif
