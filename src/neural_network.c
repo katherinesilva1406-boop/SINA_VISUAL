@@ -224,5 +224,112 @@ void forward_propagation(RedNeuronal *red, double *entradas_iniciales) {
     }
 }
 
+    // Agregar y Guardar pesos
+    // Guarda la inteligencia de la red (pesos y bias) en archivo .txt
+    int guardar_pesos(RedNeuronal *red, const char *nombre_archivo) {
+        FILE *archivo = fopen(nombre_archivo, "w");
+        if (archivo == NULL) {
+            printf("Error al abrir el archivo %s para escritura\n", nombre_archivo);
+            return 0;
+    
+        }
+        // Escribir la arquitectura de la red en el archivo
+        // Cabecera: Numero de capas
+        fprintf(archivo, "%d\n", red->num_capas);
+
+        // Recorremos cada neurona de cada capa y escribimos sus pesos y bias
+        for (int i = 0; i < red->num_capas; i++) {
+            for (int j = 0; j < red->capas[i].num_neuronas; j++) {
+                Neurona *n = red->capas[i].neuronas[j];
+                fprintf(archivo, "%lf" , n->bias); // Escribimos el bias primero
+                for (int k; k < n->num_entradas; k++) {
+                    fprintf(archivo, " %lf", n->pesos[k]); // Luego los pesos separados por espacio
+                }
+                fprintf(archivo, "\n"); // Nueva línea para la siguiente neurona
+        }
+    }
+    fclose(archivo);
+    return 1; // Indica que se guardó correctamente
+}
+    // Carga de pesos y bias guardados previamente para no tener que reentrenar
+    int cargar_pesos(RedNeuronal *red, const char *nombre_archivo) {
+        FILE *archivo = fopen(nombre_archivo, "r");
+        if (archivo == NULL) {
+            printf("Error al abrir el archivo %s para lectura, se cargaran pesos aleatorios\n", nombre_archivo);
+            return 0;
+        }
+    int capas_archivo;
+    if (fscanf(archivo, "%d", &capas_archivo) == EOF || capas_archivo != red->num_capas) {
+        printf("Error: El número de capas en el archivo no coincide con la red actual\n");
+        fclose(archivo);
+        return 0;
+    }
+    // Leer y sobreescribir los pesos y bias 
+    for(int i = 0; i < red->num_capas; i++) {
+        for (int j = 0; j < red->capas[i].num_neuronas; j++) {
+            Neurona *n = red->capas[i].neuronas[j];
+            if (fscanf(archivo, "%lf", &n->bias) == EOF) return 0;
+            for (int k = 0; k < n->num_entradas; k++) {
+                if (fscanf(archivo, "%lf", &n->pesos[k]) == EOF) return 0;
+            }
+        }
+    }
+    fclose(archivo);
+    printf("¡Cerebro de la red cargado exitosamente desde %s!\n", nombre_archivo);
+    return 1;  
+}
+
+    // Funcion de entrenamiento Automatizado por archivo
+    void entrenar_desde_archivo(RedNeuronal *red, const char *ruta_dataset, int epocas) {
+    printf("Iniciando entrenamiento desde archivo: %s\n", ruta_dataset);
+    
+    for (int e = 0; e < epocas; e++) {
+        FILE *archivo = fopen(ruta_dataset, "r");
+        if (archivo == NULL) {
+            printf("Error al abrir el dataset.\n");
+            return;
+        }
+
+        int num_ejemplos;
+        if (fscanf(archivo, "%d", &num_ejemplos) == EOF) {
+            fclose(archivo);
+            return;
+        }
+
+        double error_total = 0.0;
+        double entradas[25];
+        double targets[2];
+
+        for (int i = 0; i < num_ejemplos; i++) {
+            // Leer las 25 entradas de la matriz 5x5
+            for (int j = 0; j < 25; j++) {
+                fscanf(archivo, "%lf", &entradas[j]);
+            }
+            // Leer las 2 salidas esperadas
+            for (int j = 0; j < 2; j++) {
+                fscanf(archivo, "%lf", &targets[j]);
+            }
+
+            forward_propagation(red, entradas);
+            backpropagation(red, entradas, targets);
+
+            // Calcular error global del ejemplo actual (Capa de salida)
+            Capa *capa_salida = &red->capas[red->num_capas - 1];
+            for (int j = 0; j < capa_salida->num_neuronas; j++) {
+                double err = targets[j] - capa_salida->neuronas[j]->salida;
+                error_total += err * err;
+            }
+        }
+        fclose(archivo);
+
+        if (e % 500 == 0 || e == epocas - 1) {
+            printf(" > Epoca %d | Error cuadratico medio: %f\n", e, error_total / num_ejemplos);
+        }
+    }
+    printf("¡Entrenamiento completado con exito!\n");
+}
+        
+    
+
 
     
