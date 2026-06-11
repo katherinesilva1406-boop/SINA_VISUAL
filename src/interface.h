@@ -1,12 +1,12 @@
 //interface.h
 
-#ifdef INTERFACE_H
+#ifndef INTERFACE_H
 #define INTERFACE_H
 
-int mostrar_menu ();
+int mostrar_menu_principal();
 
-void mostrar_barra_progreso (int epoca_actual, int total_epocas, double error_actual);
+void mostrar_barra_progreso (int e, int epocas, double error);
 
-void mostrar_interfaz_SINA (double **fila_datos, double *predicciones_IA, double prediccion_vel, int cuadro, int total);
+void mostrar_interfaz_SINA(double *fila_datos, double prediccion_dir, double prediccion_vel, int cuadro, int total);
 
 #endif

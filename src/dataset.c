@@ -1,92 +1,88 @@
-//dataset.c
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "dataset.h"
 
 Dataset* crear_dataset (int f, int e, int s) {
-    Dataset *nuevo = (Dataset*) malloc (sizeof(Dataset));
-    if (nuevo == NULL) {
-        fprintf(stderr, "Error al asignar memoria para el dataset.\n");
-        return NULL;
-    }
+    Dataset *nuevo = (Dataset*) malloc(sizeof(Dataset));
+    if (nuevo == NULL) return NULL;
 
-    nuevo -> filas = f;
-    nuevo -> entradas = e;
-    nuevo -> salidas = s;
+    nuevo->filas = f;
+    nuevo->num_radar = e;         // ¡CORREGIDO! Ahora coincide con dataset.h
+    nuevo->num_telemetria = s;    // Asignamos las telemetrías esperadas
+    nuevo->salidas = s;           // Sincronizamos las salidas de las neuronas
 
-    //Almacenamos espacio para las filas
-    nuevo -> datos = (double**) malloc (f * sizeof (double*));
-    if (nuevo -> datos == NULL) {
-        fprintf(stderr, "Error al asignar memoria para las filas del dataset.\n");
+    // Asignamos memoria para las filas (punteros a filas)
+    nuevo->datos = (double**) malloc(f * sizeof(double*));
+    if (nuevo->datos == NULL) {
         free(nuevo);
         return NULL;
     }
 
-    // Reservamos memoria para cada columna de cada fila (27 entradas + 1 salida = 28 dobles)
+    // Cada fila contendrá el radar + la telemetría (25 + 2 = 27 columnas en total)
     for (int i = 0; i < f; i++) {
-        nuevo -> datos[i] = (double*) malloc ((e * s) * sizeof (double));
-        if (nuevo -> datos[i] == NULL) {
-            fprintf(stderr, "Error al asignar memoria para las columnas del dataset en la fila %d.\n", i);
-            // Liberamos las filas ya asignadas antes de salir
-            for (int j = 0; j < i; j++) {
-                free(nuevo -> datos[j]);
-            }
-            free(nuevo -> datos);
+        nuevo->datos[i] = (double*) malloc((e + s) * sizeof(double));
+        if (nuevo->datos[i] == NULL) {
+            // Si falla la memoria a mitad de camino, liberamos lo anterior para evitar fugas
+            for (int j = 0; j < i; j++) free(nuevo->datos[j]);
+            free(nuevo->datos);
             free(nuevo);
             return NULL;
         }
     }
+
     return nuevo;
 }
 
 Dataset* leer_archivo_csv (char *Neurona, int e, int s) {
-    FILE *archivo = fopen (Neurona, "r");
+    FILE *archivo = fopen(Neurona, "r");
     if (archivo == NULL) {
-        fprintf(stderr, "Error al abrir el archivo CSV.\n");
+        printf("Error: No se pudo abrir el archivo CSV: %s\n", Neurona);
         return NULL;
     }
 
+    // 1. Contamos cuántas líneas (escenarios) reales tiene el archivo
     int filas = 0;
-    char linea_temporal [4096]; // Buffer para leer cada línea del archivo
-
-    // Contamos las lineas reales que tienen el archivo csv para hacer el malloc exacto
-    while (fgets (linea_temporal, sizeof (linea_temporal), archivo) != NULL) {
+    char linea[1024];
+    while (fgets(linea, sizeof(linea), archivo)) {
         filas++;
     }
-    rewind (archivo); // Volvemos el puntero al inicio del archivo para empezar a leer los numeros
+    rewind(archivo); // Volvemos el puntero al inicio del archivo para leer los datos
 
-    // Creamos la estructura inteligente para abosber los datos del auto/dron
-    Dataset *ds = crear_dataset (filas, e, s);
+    // 2. Creamos el espacio en memoria con el constructor corregido
+    Dataset *ds = crear_dataset(filas, e, s);
     if (ds == NULL) {
         fclose(archivo);
         return NULL;
     }
 
-    // Doble ciclo "for" inteligente para absorber los datos del auto/dron
-    for (int i = 0; i < filas; i++) {
-        for (int j = 0; j < (e * s); j++) {
-            fscanf (archivo, "%lf", &ds -> datos[i][j]);
-
-            // Nos comemos el caracter separador de inmediato 
-            char separador =fgetc (archivo);
-            if (separador == '\r' || separador == '\n') {
-                fgetc (archivo); // Si es un salto de línea, lo consumimos para evitar problemas en la lectura
-            } 
+    // 3. Tokenizamos con strtok para rellenar la matriz dinámica
+    int f = 0;
+    while (fgets(linea, sizeof(linea), archivo) && f < filas) {
+        char *token = strtok(linea, ",");
+        int c = 0;
+        while (token != NULL && c < (e + s)) {
+            ds->datos[f][c] = atof(token);
+            token = strtok(NULL, ",");
+            c++;
         }
+        f++;
     }
-    
-    fclose (archivo);
+
+    fclose(archivo);
     return ds;
 }
 
-// Funcion obligatoria para liberar la memoria RAM al cerrar el programa
 void liberar_dataset (Dataset *ds) {
-    if (ds == NULL) {
-        for (int i = 0; i < ds->filas; i++) {
-            free (ds->datos[i]);    // Liberamos cada fila
+    if (ds != NULL) {
+        if (ds->datos != NULL) {
+            for (int i = 0; i < ds->filas; i++) {
+                if (ds->datos[i] != NULL) {
+                    free(ds->datos[i]);
+                }
+            }
+            free(ds->datos);
         }
-        free (ds->datos);           // Liberamos el arreglo de punteros a filas
-        free (ds);                  // Liberamos la estructura principal
+        free(ds);
     }
 }
-
