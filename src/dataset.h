@@ -4,8 +4,9 @@
 
 typedef struct {
     int filas;              // Total de escenarios en el archivo csv
-    int entradas;           // Radar de 25 (MAtriz 5x5)
-    int salidas;            // 2 (Direccion y Velocidad)
+    int num_radar;          // Radar de 25 (MAtriz 5x5)
+    int num_telemetria;     // Telemetria de 2 (Direccion y Velocidad)
+    int salidas;            // 1 salida por cada neurona de salida (en este caso 2)
     double **datos;         // Matriz dinamica que guarda todo
 
 } Dataset;
