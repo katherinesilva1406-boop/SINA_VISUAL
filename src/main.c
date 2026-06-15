@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <windows.h>
 #include <math.h>
 #include "neural_network.h"
 #include "dataset.h"    
 #include "interface.h"  
+#include "raylib.h"
 
 int main() {
     srand(time(NULL));
@@ -35,7 +35,6 @@ int main() {
         switch(opcion) {
             case 1: // ENTRENAR LA RED
                 printf("\nIniciando entrenamiento estocastico de la IA...\n");
-                Sleep(1000);
 
                 for (int e = 0; e < epocas; e++) {
                     double error_epoca_acumulado = 0.0;
@@ -62,38 +61,61 @@ int main() {
 
                     if (e % 20 == 0 || e == epocas - 1) {
                         mostrar_barra_progreso(e, epocas, historial_errores[e]);
-                        Sleep(5); 
+                        fflush (stdout); 
                     }
                 }
                 red_entrenada = 1;
-                printf("\n\x1b[32m[LOG]\x1b[0m ¡Red entrenada con exito matemático real! Presione Enter...");
-                printf("\n");
-                system("pause"); // <-- Agrega esto aquí
+                printf("\n\x1b[32m[LOG]\x1b[0m Red entrenada con exito matematico real. Presione Enter...");
+                system("pause");
+                fflush (stdin);
                 break;
 
-            case 2: // SIMULACIÓN VISUAL
-                if (!red_entrenada) {
+            case 2: // SIMULACIÓN VISUAL SYNCRONIZADA
+                if (!red_entrenada) { 
                     printf("\n Error: No puedes simular sin entrenar la red primero (Opcion 1).\n");
-                    printf("Presione Enter para continuar...");
-                    getchar();
+                    system("pause");
+                    fflush(stdin);
                     break;
                 }
 
-                for (int f = 0; f < datos_vuelo->filas; f++) {
-                    forward_propagation(mi_red, datos_vuelo->datos[f]);
-                    
-                    // Corregido: Usando -> en vez de . para extraer las activaciones de salida
-                    int capa_salida = mi_red->num_capas - 1;
-                    double dir_ia = mi_red->capas[capa_salida].neuronas[0]->salida; 
-                    double vel_ia = mi_red->capas[capa_salida].neuronas[1]->salida; 
+                InitWindow(800, 450, "SINA-VISUAL: Monitoreo en Tiempo Real");
+                SetTargetFPS(60); // Obligamos a la pantalla a refrescarse 60 veces por segundo
 
+                int f = 0;
+                float reloj_simulacion = 0.0f;
+                const float velocidad_cambio = 0.5f; // <<-- CADA CUÁNTOS SEGUNDOS CAMBIA LA FILA (0.5 = medio segundo)
+
+                while (!WindowShouldClose()) {
+                    
+                    // A) CONTROL DEL RELOJ: Avanzamos la fila usando el delta time real de Raylib
+                    reloj_simulacion += GetFrameTime();
+                    if (reloj_simulacion >= velocidad_cambio) {
+                        f++;
+                        reloj_simulacion = 0.0f; // Reseteamos el reloj
+                    }
+
+                    // Si se acaban las 8 filas, reiniciamos a la fila 0 limpiamente
+                    if (f >= datos_vuelo->filas) {
+                        f = 0; 
+                    }
+
+                    // B) EJECUCIÓN MATEMÁTICA DE LA IA (Sincronizada con la fila actual)
+                    forward_propagation(mi_red, datos_vuelo->datos[f]);
+
+                    int capa_salida = mi_red->num_capas - 1;
+                    double dir_ia = mi_red->capas[capa_salida].neuronas[0]->salida;
+                    double vel_ia = mi_red->capas[capa_salida].neuronas[1]->salida;
+
+                    // C) RENDERIZADO ESTABLE: Pasamos 'f' como un entero normal
                     mostrar_interfaz_SINA(datos_vuelo->datos[f], dir_ia, vel_ia, f, datos_vuelo->filas);
-                    Sleep(800); 
                 }
-                printf("\nSimulacion terminada. Presione Enter para volver...");
-                printf("\n");
-                system("pause"); // <-- Agrega esto aquí
+
+                CloseWindow(); // Cerramos la ventana al presionar la X
+                printf("\nSimulacion terminada por el usuario.\n");
+                system("pause");
+                fflush(stdin); 
                 break;
+                
 
             case 3: // GRAFICAR EL ERROR REAL
                 system("cls");
@@ -118,7 +140,8 @@ int main() {
                 printf("=========================================================\n");
                 printf("Presione Enter para volver al menu...");
                 printf("\n");
-                system("pause"); // <-- Agrega esto aquí
+                system("pause"); 
+                fflush (stdin);
                 break;
 
             case 4:
@@ -127,7 +150,7 @@ int main() {
 
             default:
                 printf("\nOpcion no valida. Intente de nuevo.\n");
-                Sleep(1000);
+                fflush (stdin);
         }
     } while(opcion != 4);
 

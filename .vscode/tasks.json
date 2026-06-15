@@ -4,13 +4,25 @@
             "type": "cppbuild",
             "label": "C/C++: gcc.exe build active file",
             "command": "C:\\msys64\\mingw64\\bin\\gcc.exe",
+            
             "args": [
-                "-fdiagnostics-color=always",
-                "-g",
-                "${fileDirname}\\*.c",
-                "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+            "-fdiagnostics-color=always",
+            "-g",
+            "${workspaceFolder}\\src\\*.c",
+            "-o",
+            "${workspaceFolder}\\SINA_VISUAL.exe",
+            
+            // Indicamos que los archivos están guardados directamente en tu carpeta raylib
+            "-I", "${workspaceFolder}\\raylib",
+            "-L", "${workspaceFolder}\\raylib",
+            
+            // Enlazadores obligatorios
+            "-lraylib",
+            "-lopengl32",
+            "-lgdi32",
+            "-lwinmm"
             ],
+
             "options": {
                 "cwd": "${fileDirname}"
             },

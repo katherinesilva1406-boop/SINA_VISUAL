@@ -44,7 +44,7 @@ Dataset* leer_archivo_csv (char *Neurona, int e, int s) {
     // 1. Contamos cuántas líneas (escenarios) reales tiene el archivo
     int filas = 0;
     char linea[1024];
-    while (fgets(linea, sizeof(linea), archivo)) {
+    while (fgets(linea, sizeof(linea), archivo) != NULL) {
         filas++;
     }
     rewind(archivo); // Volvemos el puntero al inicio del archivo para leer los datos
