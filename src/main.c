@@ -10,7 +10,6 @@
 int main() {
     srand(time(NULL));
 
-    // CONFIGURACIÓN REAL DE LA RED (25 entradas -> 4 ocultas -> 2 salidas)
     int neuronas_por_capa[] = {25, 4, 2}; 
     int num_capas = 3;
     double tasa_aprendizaje = 0.3; 
@@ -23,137 +22,126 @@ int main() {
         return 1;
     }
 
-    int opcion;
+    int opcion_menu = 0;
     int red_entrenada = 0;
     int epocas = 1000; 
-
     double *historial_errores = (double*) malloc(epocas * sizeof(double));
 
-    do {
-        opcion = mostrar_menu_principal();
+    int f = 0;
+    float reloj_simulacion = 0.0f;
+    const float velocidad_cambio = 0.5f; 
 
-        switch(opcion) {
-            case 1: // ENTRENAR LA RED
-                printf("\nIniciando entrenamiento estocastico de la IA...\n");
+    // Inicialización de la ventana gráfica global
+    InitWindow(800, 450, "SINA-VISUAL: Sistema de Inteligencia Neuronal Autonoma");
+    SetTargetFPS(60); 
 
+    // Estados: 0 = Menu, 1 = Entrenando, 2 = Simulacion, 3 = Grafica Error
+    int estado_sistema = 0; 
+
+    while (estado_sistema != 4 && !WindowShouldClose()) {
+        
+        switch (estado_sistema) {
+            
+            case 0: // === PANTALLA: MENÚ PRINCIPAL ===
+                opcion_menu = mostrar_menu_principal();
+                if (opcion_menu == 1) estado_sistema = 1; 
+                else if (opcion_menu == 2) {
+                    if (!red_entrenada) printf("\n Error: Entrene la red primero.\n");
+                    else { f = 0; reloj_simulacion = 0.0f; estado_sistema = 2; }
+                } 
+                else if (opcion_menu == 3) estado_sistema = 3;
+                else if (opcion_menu == 4) estado_sistema = 4;
+                break;
+
+            case 1: // === PANTALLA: ENTRENAMIENTO EN VENTANA GRÁFICA ===
+                // Ejecutamos el entrenamiento real guardando los datos en la iteración
                 for (int e = 0; e < epocas; e++) {
                     double error_epoca_acumulado = 0.0;
 
-                    for (int f = 0; f < datos_vuelo->filas; f++) {
-                        // A) PROPAGACIÓN HACIA ADELANTE
-                        forward_propagation(mi_red, datos_vuelo->datos[f]);
-                        
-                        // B) SELECCIÓN DE TARGETS (Dirección y Velocidad esperadas)
-                        double targets[2] = { datos_vuelo->datos[f][25], datos_vuelo->datos[f][26] };
-                        
-                        // C) RETROPROPAGACIÓN (Corregido: Ahora pasamos las entradas de la fila actual)
-                        backpropagation(mi_red, datos_vuelo->datos[f], targets);
+                    for (int f_train = 0; f_train < datos_vuelo->filas; f_train++) {
+                        forward_propagation(mi_red, datos_vuelo->datos[f_train]);
+                        double targets[2] = { datos_vuelo->datos[f_train][25], datos_vuelo->datos[f_train][26] };
+                        backpropagation(mi_red, datos_vuelo->datos[f_train], targets);
 
-                        // D) CÁLCULO DEL ERROR REAL (Corregido: Usando -> en vez de . para las neuronas)
                         int capa_salida = mi_red->num_capas - 1;
                         double err_dir = targets[0] - mi_red->capas[capa_salida].neuronas[0]->salida;
                         double err_vel = targets[1] - mi_red->capas[capa_salida].neuronas[1]->salida;
-                        
                         error_epoca_acumulado += (err_dir * err_dir + err_vel * err_vel) / 2.0;
                     }
 
                     historial_errores[e] = error_epoca_acumulado / datos_vuelo->filas;
 
-                    if (e % 20 == 0 || e == epocas - 1) {
-                        mostrar_barra_progreso(e, epocas, historial_errores[e]);
-                        fflush (stdout); 
+                    // Dibujamos el avance directamente en la ventana gráfica (No terminado aún)
+                    if (e % 10 == 0) {
+                        mostrar_entrenamiento_grafico(e, epocas, historial_errores[e], 0);
                     }
                 }
                 red_entrenada = 1;
-                printf("\n\x1b[32m[LOG]\x1b[0m Red entrenada con exito matematico real. Presione Enter...");
-                system("pause");
-                fflush (stdin);
+
+                // Forzamos a la pantalla a quedarse fija mostrando el 100% hasta que toquen ENTER
+                while (!IsKeyPressed(KEY_ENTER) && !WindowShouldClose()) {
+                    mostrar_entrenamiento_grafico(epocas, epocas, historial_errores[epocas - 1], 1);
+                }
+                estado_sistema = 0; // Regresa al menú al presionar Enter
                 break;
 
-            case 2: // SIMULACIÓN VISUAL SYNCRONIZADA
-                if (!red_entrenada) { 
-                    printf("\n Error: No puedes simular sin entrenar la red primero (Opcion 1).\n");
-                    system("pause");
-                    fflush(stdin);
+            case 2: // === PANTALLA: SIMULACIÓN VISUAL ===
+                if (IsKeyPressed(KEY_ESCAPE)) {
+                    estado_sistema = 0; // Regresa al menú al presionar ESC
                     break;
                 }
 
-                InitWindow(800, 450, "SINA-VISUAL: Monitoreo en Tiempo Real");
-                SetTargetFPS(60); // Obligamos a la pantalla a refrescarse 60 veces por segundo
-
-                int f = 0;
-                float reloj_simulacion = 0.0f;
-                const float velocidad_cambio = 0.5f; // <<-- CADA CUÁNTOS SEGUNDOS CAMBIA LA FILA (0.5 = medio segundo)
-
-                while (!WindowShouldClose()) {
-                    
-                    // A) CONTROL DEL RELOJ: Avanzamos la fila usando el delta time real de Raylib
-                    reloj_simulacion += GetFrameTime();
-                    if (reloj_simulacion >= velocidad_cambio) {
-                        f++;
-                        reloj_simulacion = 0.0f; // Reseteamos el reloj
-                    }
-
-                    // Si se acaban las 8 filas, reiniciamos a la fila 0 limpiamente
-                    if (f >= datos_vuelo->filas) {
-                        f = 0; 
-                    }
-
-                    // B) EJECUCIÓN MATEMÁTICA DE LA IA (Sincronizada con la fila actual)
-                    forward_propagation(mi_red, datos_vuelo->datos[f]);
-
-                    int capa_salida = mi_red->num_capas - 1;
-                    double dir_ia = mi_red->capas[capa_salida].neuronas[0]->salida;
-                    double vel_ia = mi_red->capas[capa_salida].neuronas[1]->salida;
-
-                    // C) RENDERIZADO ESTABLE: Pasamos 'f' como un entero normal
-                    mostrar_interfaz_SINA(datos_vuelo->datos[f], dir_ia, vel_ia, f, datos_vuelo->filas);
+                reloj_simulacion += GetFrameTime();
+                if (reloj_simulacion >= velocidad_cambio) {
+                    f++;
+                    reloj_simulacion = 0.0f; 
                 }
+                if (f >= datos_vuelo->filas) f = 0; 
 
-                CloseWindow(); // Cerramos la ventana al presionar la X
-                printf("\nSimulacion terminada por el usuario.\n");
-                system("pause");
-                fflush(stdin); 
+                forward_propagation(mi_red, datos_vuelo->datos[f]);
+                int capa_salida = mi_red->num_capas - 1;
+                double dir_ia = mi_red->capas[capa_salida].neuronas[0]->salida;
+                double vel_ia = mi_red->capas[capa_salida].neuronas[1]->salida;
+
+                mostrar_interfaz_SINA(datos_vuelo->datos[f], dir_ia, vel_ia, f, datos_vuelo->filas);
                 break;
-                
 
-            case 3: // GRAFICAR EL ERROR REAL
-                system("cls");
-                printf("=========================================================\n");
-                printf("     GRAFICA ASCII: DECREMENTO DEL ERROR GLOBAL REAL     \n");
-                printf("=========================================================\n\n");
-                
-                int salto = epocas / 15; 
-                for (int i = 0; i < epocas; i += salto) {
-                    printf(" Epica %4d [%.4f] | ", i, historial_errores[i]);
-                    
-                    int longitud_barra = (int)(historial_errores[i] * 100); 
-                    if (longitud_barra > 50) longitud_barra = 50; 
-                    
-                    for (int j = 0; j < longitud_barra; j++) {
-                        printf("*");
+            case 3: // === PANTALLA: HISTORIAL DE ERROR GRÁFICO (REEMPLAZO DE LA CONSOLA) ===
+                BeginDrawing();
+                    ClearBackground(BLACK);
+                    DrawRectangle(0, 0, 800, 60, DARKGRAY);
+                    DrawText("EVOLUCION DEL ERROR MATEMATICO GLOBAL", 20, 18, 20, RED);
+                    DrawText("Presione [ESC] o [ENTER] para regresar al Menu Principal", 20, 420, 14, LIGHTGRAY);
+
+                    if (!red_entrenada) {
+                        DrawText("No hay datos de error. Entrene la red primero en la opcion 1.", 120, 200, 16, RAYWHITE);
+                    } else {
+                        // Dibujamos una cuadrícula e historial gráfico simple en la ventana
+                        int salto = epocas / 20;
+                        int x_grafica = 80;
+                        int y_grafica = 100;
+
+                        for (int i = 0; i < epocas; i += salto) {
+                            int anchoBarraErr = (int)(historial_errores[i] * 400);
+                            if (anchoBarraErr > 500) anchoBarraErr = 500;
+
+                            DrawText(TextFormat("E %03d:", i), x_grafica, y_grafica, 13, GRAY);
+                            DrawRectangle(x_grafica + 50, y_grafica + 2, anchoBarraErr, 10, RED);
+                            DrawText(TextFormat("%.4f", historial_errores[i]), x_grafica + 60 + anchoBarraErr, y_grafica, 11, LIGHTGRAY);
+                            
+                            y_grafica += 15;
+                        }
                     }
-                    printf("\n");
-                }
-                
-                printf("\n Como ves, a mayor numero de epocas, el error disminuye hacia 0.\n");
-                printf("=========================================================\n");
-                printf("Presione Enter para volver al menu...");
-                printf("\n");
-                system("pause"); 
-                fflush (stdin);
-                break;
 
-            case 4:
-                printf("\nCerrando SINA-VISUAL de forma segura...\n");
+                    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
+                        estado_sistema = 0; // Regresa de forma segura
+                    }
+                EndDrawing();
                 break;
-
-            default:
-                printf("\nOpcion no valida. Intente de nuevo.\n");
-                fflush (stdin);
         }
-    } while(opcion != 4);
+    }
 
+    CloseWindow(); 
     free(historial_errores);
     liberar_dataset(datos_vuelo);
     liberar_red(mi_red);
