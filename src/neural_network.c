@@ -75,6 +75,7 @@ RedNeuronal * inicializar_red(int num_capas, int *neuronas_por_capa, double tasa
         red->capas[i].neuronas = (Neurona **) malloc(neuronas_por_capa[i] * sizeof(Neurona*));
         
         if (red->capas[i].neuronas == NULL) {
+            liberar_red(red); // Liberamos toda la red si falla la asignación
             return NULL;
         }
 
@@ -242,7 +243,7 @@ void forward_propagation(RedNeuronal *red, double *entradas_iniciales) {
             for (int j = 0; j < red->capas[i].num_neuronas; j++) {
                 Neurona *n = red->capas[i].neuronas[j];
                 fprintf(archivo, "%lf" , n->bias); // Escribimos el bias primero
-                for (int k; k < n->num_entradas; k++) {
+                for (int k = 0; k < n->num_entradas; k++) {
                     fprintf(archivo, " %lf", n->pesos[k]); // Luego los pesos separados por espacio
                 }
                 fprintf(archivo, "\n"); // Nueva línea para la siguiente neurona
@@ -268,9 +269,14 @@ void forward_propagation(RedNeuronal *red, double *entradas_iniciales) {
     for(int i = 0; i < red->num_capas; i++) {
         for (int j = 0; j < red->capas[i].num_neuronas; j++) {
             Neurona *n = red->capas[i].neuronas[j];
-            if (fscanf(archivo, "%lf", &n->bias) == EOF) return 0;
+            if (fscanf(archivo, "%lf", &n->bias) == EOF) 
+            fclose(archivo); 
+            return 0;
             for (int k = 0; k < n->num_entradas; k++) {
-                if (fscanf(archivo, "%lf", &n->pesos[k]) == EOF) return 0;
+                if (fscanf(archivo, "%lf", &n->pesos[k]) == EOF) {
+                    fclose(archivo);
+                    return 0;
+                }
             }
         }
     }
@@ -283,17 +289,17 @@ void forward_propagation(RedNeuronal *red, double *entradas_iniciales) {
     void entrenar_desde_archivo(RedNeuronal *red, const char *ruta_dataset, int epocas) {
     printf("Iniciando entrenamiento desde archivo: %s\n", ruta_dataset);
     
-    for (int e = 0; e < epocas; e++) {
-        FILE *archivo = fopen(ruta_dataset, "r");
-        if (archivo == NULL) {
-            printf("Error al abrir el dataset.\n");
-            return;
-        }
+    // Abrimos el archivo una sola vez AFUERA del ciclo de épocas
+    FILE *archivo = fopen(ruta_dataset, "r");
+    if (archivo == NULL) {
+        printf("Error crítico: No se pudo abrir el dataset.\n");
+        return;
+    }
 
+    for (int e = 0; e < epocas; e++) {
         int num_ejemplos;
         if (fscanf(archivo, "%d", &num_ejemplos) == EOF) {
-            fclose(archivo);
-            return;
+            break;
         }
 
         double error_total = 0.0;
@@ -301,11 +307,9 @@ void forward_propagation(RedNeuronal *red, double *entradas_iniciales) {
         double targets[2];
 
         for (int i = 0; i < num_ejemplos; i++) {
-            // Leer las 25 entradas de la matriz 5x5
             for (int j = 0; j < 25; j++) {
                 fscanf(archivo, "%lf", &entradas[j]);
             }
-            // Leer las 2 salidas esperadas
             for (int j = 0; j < 2; j++) {
                 fscanf(archivo, "%lf", &targets[j]);
             }
@@ -313,23 +317,22 @@ void forward_propagation(RedNeuronal *red, double *entradas_iniciales) {
             forward_propagation(red, entradas);
             backpropagation(red, entradas, targets);
 
-            // Calcular error global del ejemplo actual (Capa de salida)
             Capa *capa_salida = &red->capas[red->num_capas - 1];
             for (int j = 0; j < capa_salida->num_neuronas; j++) {
                 double err = targets[j] - capa_salida->neuronas[j]->salida;
                 error_total += err * err;
             }
         }
-        fclose(archivo);
+
+        // En lugar de cerrar y volver a abrir, rebobinamos el puntero al inicio del archivo
+        rewind(archivo);
 
         if (e % 500 == 0 || e == epocas - 1) {
             printf(" > Epoca %d | Error cuadratico medio: %f\n", e, error_total / num_ejemplos);
         }
     }
+    
+    fclose(archivo); // Cerramos definitivamente al terminar todas las épocas
     printf("¡Entrenamiento completado con exito!\n");
 }
-        
-    
-
-
     
