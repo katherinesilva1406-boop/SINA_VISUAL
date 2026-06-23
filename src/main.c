@@ -78,6 +78,8 @@ int main() {
                 }
                 red_entrenada = 1;
 
+                guardar_pesos(mi_red, "data/pesos_sina.txt");
+
                 // Forzamos a la pantalla a quedarse fija mostrando el 100% hasta que toquen ENTER
                 while (!IsKeyPressed(KEY_ENTER) && !WindowShouldClose()) {
                     mostrar_entrenamiento_grafico(epocas, epocas, historial_errores[epocas - 1], 1);
