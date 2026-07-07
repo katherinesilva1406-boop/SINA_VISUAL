@@ -1,88 +1,90 @@
+#include "dataset.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "dataset.h"
 
-Dataset* crear_dataset (int f, int e, int s) {
-    Dataset *nuevo = (Dataset*) malloc(sizeof(Dataset));
-    if (nuevo == NULL) return NULL;
+#define MAX_LINEA 512
 
-    nuevo->filas = f;
-    nuevo->num_radar = e;         // ¡CORREGIDO! Ahora coincide con dataset.h
-    nuevo->num_telemetria = s;    // Asignamos las telemetrías esperadas
-    nuevo->salidas = s;           // Sincronizamos las salidas de las neuronas
-
-    // Asignamos memoria para las filas (punteros a filas)
-    nuevo->datos = (double**) malloc(f * sizeof(double*));
-    if (nuevo->datos == NULL) {
-        free(nuevo);
-        return NULL;
-    }
-
-    // Cada fila contendrá el radar + la telemetría (25 + 2 = 27 columnas en total)
-    for (int i = 0; i < f; i++) {
-        nuevo->datos[i] = (double*) malloc((e + s) * sizeof(double));
-        if (nuevo->datos[i] == NULL) {
-            // Si falla la memoria a mitad de camino, liberamos lo anterior para evitar fugas
-            for (int j = 0; j < i; j++) free(nuevo->datos[j]);
-            free(nuevo->datos);
-            free(nuevo);
-            return NULL;
-        }
-    }
-
-    return nuevo;
-}
-
-Dataset* leer_archivo_csv (char *Neurona, int e, int s) {
-    FILE *archivo = fopen(Neurona, "r");
+// Lee el CSV en dos pasadas:
+//  1ra pasada: contar cuantas filas de datos hay (para hacer UN solo malloc exacto)
+//  2da pasada: parsear los numeros con strtod
+Dataset *leer_archivo_csv(const char *ruta, int columnas) {
+    FILE *archivo = fopen(ruta, "r");
     if (archivo == NULL) {
-        printf("Error: No se pudo abrir el archivo CSV: %s\n", Neurona);
+        printf("Error: no se pudo abrir %s\n", ruta);
         return NULL;
     }
 
-    // 1. Contamos cuántas líneas (escenarios) reales tiene el archivo
+    char linea[MAX_LINEA];
     int filas = 0;
-    char linea[1024];
-    while (fgets(linea, sizeof(linea), archivo) != NULL) {
+
+    // --- Pasada 1: contar filas validas ---
+    while (fgets(linea, MAX_LINEA, archivo) != NULL) {
+        if (linea[0] == '#' || linea[0] == '\n' || linea[0] == '\r') continue;
         filas++;
     }
-    rewind(archivo); // Volvemos el puntero al inicio del archivo para leer los datos
 
-    // 2. Creamos el espacio en memoria con el constructor corregido
-    Dataset *ds = crear_dataset(filas, e, s);
-    if (ds == NULL) {
+    if (filas == 0) {
+        printf("Error: %s no contiene datos\n", ruta);
         fclose(archivo);
         return NULL;
     }
 
-    // 3. Tokenizamos con strtok para rellenar la matriz dinámica
+    Dataset *d = (Dataset *) malloc(sizeof(Dataset));
+    if (d == NULL) { fclose(archivo); return NULL; }
+
+    d->filas = filas;
+    d->columnas = columnas;
+    d->datos = (double **) malloc(filas * sizeof(double *));
+    if (d->datos == NULL) { free(d); fclose(archivo); return NULL; }
+
+    for (int i = 0; i < filas; i++) {
+        d->datos[i] = (double *) malloc(columnas * sizeof(double));
+        if (d->datos[i] == NULL) {
+            for (int k = 0; k < i; k++) free(d->datos[k]);
+            free(d->datos);
+            free(d);
+            fclose(archivo);
+            return NULL;
+        }
+    }
+
+    // --- Pasada 2: volver al inicio y parsear ---
+    rewind(archivo);
     int f = 0;
-    while (fgets(linea, sizeof(linea), archivo) && f < filas) {
-        char *token = strtok(linea, ",");
-        int c = 0;
-        while (token != NULL && c < (e + s)) {
-            ds->datos[f][c] = atof(token);
-            token = strtok(NULL, ",");
-            c++;
+
+    while (fgets(linea, MAX_LINEA, archivo) != NULL && f < filas) {
+        if (linea[0] == '#' || linea[0] == '\n' || linea[0] == '\r') continue;
+
+        char *cursor = linea;
+        for (int c = 0; c < columnas; c++) {
+            char *fin;
+            d->datos[f][c] = strtod(cursor, &fin);
+
+            if (fin == cursor) {
+                printf("Advertencia: fila %d incompleta en %s\n", f + 1, ruta);
+                break;
+            }
+            cursor = fin;
+            // Saltar la coma y espacios que siguen al numero
+            while (*cursor == ',' || *cursor == ' ' || *cursor == '\t') cursor++;
         }
         f++;
     }
 
     fclose(archivo);
-    return ds;
+    printf("Dataset cargado: %d ejemplos de %d columnas desde %s\n",
+           d->filas, d->columnas, ruta);
+    return d;
 }
 
-void liberar_dataset (Dataset *ds) {
-    if (ds != NULL) {
-        if (ds->datos != NULL) {
-            for (int i = 0; i < ds->filas; i++) {
-                if (ds->datos[i] != NULL) {
-                    free(ds->datos[i]);
-                }
-            }
-            free(ds->datos);
+void liberar_dataset(Dataset *d) {
+    if (d == NULL) return;
+    if (d->datos != NULL) {
+        for (int i = 0; i < d->filas; i++) {
+            if (d->datos[i] != NULL) free(d->datos[i]);
         }
-        free(ds);
+        free(d->datos);
     }
+    free(d);
 }

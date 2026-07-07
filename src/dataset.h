@@ -1,18 +1,21 @@
-//dataset.h
 #ifndef DATASET_H
 #define DATASET_H
 
+/*
+ * Dataset de SINA-VISUAL
+ * Cada fila del CSV es una "situacion de manejo":
+ *   5 sensores + 2 targets (giro, acelerador) = 7 columnas
+ *
+ * En memoria: datos[fila][0..4] = sensores, datos[fila][5..6] = targets
+ */
 typedef struct {
-    int filas;              // Total de escenarios en el archivo csv
-    int num_radar;          // Radar de 25 (MAtriz 5x5)
-    int num_telemetria;     // Telemetria de 2 (Direccion y Velocidad)
-    int salidas;            // 1 salida por cada neurona de salida (en este caso 2)
-    double **datos;         // Matriz dinamica que guarda todo
-
+    int filas;      // Cantidad de ejemplos
+    int columnas;   // Columnas totales por fila (entradas + salidas)
+    double **datos; // Matriz dinamica [filas][columnas]
 } Dataset;
 
-Dataset* crear_dataset (int f, int e, int s);
-Dataset* leer_archivo_csv (char *Neurona, int e, int s);
-void liberar_dataset (Dataset *ds);
+// Lee un CSV. Ignora lineas vacias y lineas que empiezan con '#'
+Dataset *leer_archivo_csv(const char *ruta, int columnas);
+void liberar_dataset(Dataset *d);
 
 #endif

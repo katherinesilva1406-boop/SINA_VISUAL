@@ -1,8 +1,49 @@
-# Caso A: Pista limpia -> Avanzar rápido y centrado
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.5,0.9
-
-# Caso B: Obstáculo en el centro arriba -> Empezar a esquivar a la izquierda y bajar velocidad
-0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.2,0.5
-
-# Caso C: ¡EMERGENCIA CRÍTICA! Obstáculo justo al frente en la fila de abajo (Fila 5)
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0.1,0.1
+# Dataset SINA-VISUAL: situaciones de manejo
+# Formato: izq_lejano, izquierda, centro, derecha, der_lejano, giro, acelerador
+# Sensores: 0.0 = obstaculo pegado ... 1.0 = via libre
+# giro: 0.0 = todo izquierda, 0.5 = recto, 1.0 = todo derecha
+# acelerador: 0.0 = frenar, 1.0 = acelerar a fondo
+#
+# --- Via totalmente libre: recto y a fondo ---
+1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 1.0
+0.9, 1.0, 1.0, 1.0, 0.9, 0.5, 1.0
+1.0, 0.9, 1.0, 0.9, 1.0, 0.5, 0.9
+#
+# --- Obstaculo justo al frente: esquivar hacia el lado mas libre ---
+1.0, 1.0, 0.2, 1.0, 1.0, 0.8, 0.3
+1.0, 1.0, 0.1, 0.9, 1.0, 0.8, 0.2
+1.0, 0.9, 0.2, 1.0, 1.0, 0.8, 0.3
+0.9, 1.0, 0.3, 1.0, 0.9, 0.7, 0.4
+1.0, 1.0, 0.2, 0.4, 1.0, 0.2, 0.3
+1.0, 0.4, 0.2, 1.0, 1.0, 0.8, 0.3
+#
+# --- Obstaculo a la izquierda: girar a la derecha ---
+0.8, 0.2, 1.0, 1.0, 1.0, 0.8, 0.5
+0.6, 0.3, 0.9, 1.0, 1.0, 0.7, 0.5
+0.9, 0.1, 1.0, 1.0, 0.9, 0.9, 0.4
+0.5, 0.2, 0.8, 1.0, 1.0, 0.8, 0.4
+#
+# --- Obstaculo a la derecha: girar a la izquierda ---
+1.0, 1.0, 1.0, 0.2, 0.8, 0.2, 0.5
+1.0, 1.0, 0.9, 0.3, 0.6, 0.3, 0.5
+0.9, 1.0, 1.0, 0.1, 0.9, 0.1, 0.4
+1.0, 1.0, 0.8, 0.2, 0.5, 0.2, 0.4
+#
+# --- Obstaculo lejano a un lado: correccion suave sin frenar tanto ---
+0.4, 0.9, 1.0, 1.0, 1.0, 0.65, 0.8
+1.0, 1.0, 1.0, 0.9, 0.4, 0.35, 0.8
+0.5, 1.0, 1.0, 1.0, 1.0, 0.6, 0.9
+1.0, 1.0, 1.0, 1.0, 0.5, 0.4, 0.9
+#
+# --- Pasillo estrecho: ambos lados cerrados, centro libre -> recto con cuidado ---
+0.3, 0.4, 1.0, 0.4, 0.3, 0.5, 0.6
+0.2, 0.3, 0.9, 0.3, 0.2, 0.5, 0.5
+#
+# --- Todo bloqueado: frenar a fondo ---
+0.2, 0.2, 0.1, 0.2, 0.2, 0.5, 0.0
+0.1, 0.1, 0.1, 0.1, 0.1, 0.5, 0.0
+0.3, 0.2, 0.2, 0.2, 0.3, 0.5, 0.1
+#
+# --- Diagonal: obstaculos en esquina, esquivar al lado contrario ---
+0.2, 0.3, 0.5, 1.0, 1.0, 0.85, 0.4
+1.0, 1.0, 0.5, 0.3, 0.2, 0.15, 0.4
